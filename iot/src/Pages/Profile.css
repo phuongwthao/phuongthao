@@ -1,0 +1,23 @@
+.contain {
+  display: flex;
+  justify-content: center; /* Căn giữa phần pagination */
+  align-items: center;
+  width: 800px;
+  height: 650px;
+  background-color: white;
+  margin-top: 50px;
+  padding: 0;
+  
+}
+.profile {
+  display: flex;
+  justify-content: center; /* Căn giữa phần pagination */
+  align-items: center;
+}
+.contain .column .row{
+    background-color: pink;
+    width: 330px;
+    padding: 20px;
+    margin-top: 10px;
+    border-radius: 10px;
+}
