@@ -8,71 +8,212 @@ import fanGif from "../Assets/fan.gif";
 import bulbGif from "../Assets/bulb.gif";
 import "./Dashboard.css";
 function Dashboard() {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const data = {
-      labels: labels,
-      datasets: [
-        {
-          label: "Temperature",
-          backgroundColor: "red",
-          borderColor: "red",
-          data: [25, 30, 26, 27, 28, 29, 30],
-          tension: 0.4,
-        },
-        {
-          label: "Humid",
-          backgroundColor: "blue",
-          borderColor: "blue",
-          data: [70, 65, 75, 60, 50, 80, 55],
-          tension: 0.4,
-        },
-        {
-          label: "Light",
-          backgroundColor: "yellow",
-          borderColor: "yellow",
-          data: [30, 55, 60, 70, 55, 80, 60],
-          tension: 0.4,
-        },
-      ],
-    };
-
-    const config = {
-      type: "line",
-      data: data,
-    };
-
-    const chart = new Chart(canvasRef.current, config);
-
-    return () => {
-      // Cleanup chart instance on component unmount
-      chart.destroy();
-    };
-  }, []);
-
+  const [temperature, setTemperature] = useState(30);
+  const [humidity, setHumidity] = useState(60);
+  const [light_level, setLight_Level] = useState(0);
   const [isChecked1, setIsChecked1] = useState(false);
   const [isChecked2, setIsChecked2] = useState(false);
   const [isChecked3, setIsChecked3] = useState(false);
 
-  const handleCheckboxChange1 = () => {
-    setIsChecked1(!isChecked1);
+  const getColorWithAlpha = (value, type) => {
+    let baseColor;
+    if (type === "temperature") baseColor = "255, 0, 0"; // Màu đỏ cho nhiệt độ
+    else if (type === "humidity")
+      baseColor = "30,144,255"; // Màu xanh cho độ ẩm
+    else if (type === "light") baseColor = "255,255,153"; // Màu vàng cho ánh sáng
+
+    // Tăng alpha dựa trên giá trị cảm biến, giá trị càng cao alpha càng lớn
+    const alpha = Math.min(1, value / 100); // Chỉ số alpha từ 0 đến 1
+    return `rgba(${baseColor}, ${alpha})`; // Trả về màu với alpha
   };
 
-  const handleCheckboxChange2 = () => {
-    setIsChecked2(!isChecked2);
+  const fetchLatestSensorData = async () => {
+    try {
+      const response = await fetch(
+        "http://localhost:3000/api/get-latest-sensor-data"
+      );
+      const data = await response.json();
+      // Cập nhật giá trị cảm biến với dữ liệu từ API
+      setTemperature(data.temperature);
+      setHumidity(data.humidity);
+      setLight_Level(data.light_level);
+    } catch (error) {
+      console.error("Error fetching sensor data:", error);
+    }
   };
 
-  const handleCheckboxChange3 = () => {
-    setIsChecked3(!isChecked3);
+  useEffect(() => {
+    fetchLatestSensorData();
+
+    // Gọi API liên tục mỗi 5 giây để cập nhật dữ liệu cảm biến
+    const intervalId = setInterval(fetchLatestSensorData, 5000);
+
+    // Cleanup interval khi component bị hủy
+    return () => clearInterval(intervalId);
+  }, []);
+
+  const fetchSensorData = async () => {
+    try {
+      const response = await fetch(
+        "http://localhost:3000/api/get-all-sensor-data?page=1&pagesize=10"
+      );
+      const datas = await response.json();
+
+      // Trả về dữ liệu, ví dụ như mảng các bản ghi
+      return datas.data;
+    } catch (error) {
+      console.error("Error fetching sensor data:", error);
+      return [];
+    }
+  };
+
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    const fetchAndRenderData = async () => {
+      // Lấy dữ liệu từ API
+      const sensorData = await fetchSensorData();
+
+      if (sensorData.length === 0) return;
+
+      // Lấy ra thời gian và các dữ liệu cảm biến từ API
+      const labels = sensorData.map((item) => item.time);
+      const temperatureData = sensorData.map((item) => item.temperature);
+      const humidityData = sensorData.map((item) => item.humidity);
+      const lightData = sensorData.map((item) => item.light_level);
+
+      const data = {
+        labels: labels,
+        datasets: [
+          {
+            label: "Temperature",
+            backgroundColor: "red",
+            borderColor: "red",
+            data: temperatureData,
+            tension: 0.4,
+          },
+          {
+            label: "Humid",
+            backgroundColor: "blue",
+            borderColor: "blue",
+            data: humidityData,
+            tension: 0.4,
+          },
+          {
+            label: "Light",
+            backgroundColor: "yellow",
+            borderColor: "yellow",
+            data: lightData,
+            tension: 0.4,
+          },
+        ],
+      };
+
+      const config = {
+        type: "line",
+        data: data,
+      };
+
+      // Hủy biểu đồ cũ trước khi tạo mới
+      if (chartRef.current) {
+        chartRef.current.destroy();
+      }
+
+      // Tạo biểu đồ mới
+      chartRef.current = new Chart(canvasRef.current, config);
+    };
+
+    // Gọi hàm để fetch dữ liệu và vẽ biểu đồ lần đầu
+    fetchAndRenderData();
+
+    // Cập nhật dữ liệu mỗi 5 giây
+    const intervalId = setInterval(fetchAndRenderData, 5000);
+
+    // Cleanup khi component bị hủy
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.destroy();
+      }
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  const handleCheckboxChange1 = async (event) => {
+    const newChecked = event.target.checked;
+    const action = newChecked ? "ON" : "OFF";
+    const payload = {
+      device: "LED",
+      action: action,
+    };
+    const response = await fetch("http://localhost:3000/api/control-device", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json", // Đặt header cho JSON
+      },
+      body: JSON.stringify(payload), // Chuyển đổi payload thành chuỗi JSON
+    });
+    if (response.ok) {
+      // Nếu điều khiển thành công, cập nhật trạng thái
+      setIsChecked1(newChecked);
+    } else {
+      console.error("Failed to control the LED.");
+    }
+  };
+  const handleCheckboxChange2 = async (event) => {
+    const newChecked = event.target.checked;
+    const action = newChecked ? "ON" : "OFF";
+    const payload = {
+      device: "FAN",
+      action: action,
+    };
+    const response = await fetch("http://localhost:3000/api/control-device", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json", // Đặt header cho JSON
+      },
+      body: JSON.stringify(payload), // Chuyển đổi payload thành chuỗi JSON
+    });
+    if (response.ok) {
+      // Nếu điều khiển thành công, cập nhật trạng thái
+      setIsChecked2(newChecked);
+    } else {
+      console.error("Failed to control the LED.");
+    }
+  };
+
+  const handleCheckboxChange3 = async (event) => {
+    const newChecked = event.target.checked;
+    const action = newChecked ? "ON" : "OFF";
+    const payload = {
+      device: "CONDITIONER",
+      action: action,
+    };
+    const response = await fetch("http://localhost:3000/api/control-device", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json", // Đặt header cho JSON
+      },
+      body: JSON.stringify(payload), // Chuyển đổi payload thành chuỗi JSON
+    });
+    if (response.ok) {
+      // Nếu điều khiển thành công, cập nhật trạng thái
+      setIsChecked3(newChecked);
+    } else {
+      console.error("Failed to control the LED.");
+    }
   };
 
   return (
     <div style={{ margin: "30px" }}>
       <div className="row" style={{ margin: "5px" }}>
         <div className="col-4 py-3 py-md-0">
-          <div className="card">
+          <div
+            className="card"
+            style={{
+              backgroundColor: getColorWithAlpha(temperature, "temperature"),
+            }}
+          >
             <div className="card-body">
               <div className="">
                 <i
@@ -82,13 +223,16 @@ function Dashboard() {
                 <span>Temperature</span>
               </div>
 
-              <div className="content">30</div>
+              <div className="content">{temperature}</div>
             </div>
           </div>
         </div>
 
         <div className="col-4 py-3 py-md-0">
-          <div className="card">
+          <div
+            className="card"
+            style={{ backgroundColor: getColorWithAlpha(humidity, "humidity") }}
+          >
             <div className="card-body">
               <div className="">
                 <i
@@ -98,13 +242,16 @@ function Dashboard() {
                 <span>Humid</span>
               </div>
 
-              <div className="content">80%</div>
+              <div className="content">{humidity}</div>
             </div>
           </div>
         </div>
 
         <div className="col-4 py-3 py-md-0">
-          <div className="card">
+          <div
+            className="card"
+            style={{ backgroundColor: getColorWithAlpha(light_level, "light") }}
+          >
             <div className="card-body">
               <div className="">
                 <i
@@ -114,7 +261,7 @@ function Dashboard() {
                 <span>Light</span>
               </div>
 
-              <div className="content">70</div>
+              <div className="content">{light_level}</div>
             </div>
           </div>
         </div>
@@ -131,6 +278,7 @@ function Dashboard() {
           <div className="title">Đồ Thị</div>
           <canvas ref={canvasRef}></canvas>
         </div>
+
         <div
           className="column col-3 py-3"
           style={{
@@ -164,11 +312,7 @@ function Dashboard() {
                 {" "}
                 <span className="status" style={{ paddingLeft: "30px" }}>
                   <label className="switch">
-                    <input
-                      type="checkbox"
-                      checked={isChecked1}
-                      onChange={handleCheckboxChange1}
-                    />
+                    <input type="checkbox" onChange={handleCheckboxChange1} />
                     <span className="slider"></span>
                   </label>
                 </span>
@@ -196,11 +340,7 @@ function Dashboard() {
               <div className="col-4">
                 <span className="status" style={{ paddingLeft: "30px" }}>
                   <label className="switch">
-                    <input
-                      type="checkbox"
-                      checked={isChecked2}
-                      onChange={handleCheckboxChange2}
-                    />
+                    <input type="checkbox" onChange={handleCheckboxChange2} />
                     <span className="slider"></span>
                   </label>
                 </span>
@@ -230,11 +370,7 @@ function Dashboard() {
               <div className="col-4">
                 <span className="status" style={{ paddingLeft: "30px" }}>
                   <label className="switch">
-                    <input
-                      type="checkbox"
-                      checked={isChecked3}
-                      onChange={handleCheckboxChange3}
-                    />
+                    <input type="checkbox" onChange={handleCheckboxChange3} />
                     <span className="slider"></span>
                   </label>
                 </span>

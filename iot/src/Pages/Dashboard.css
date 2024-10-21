@@ -47,7 +47,7 @@ input:checked + .slider::before {
     transition: transform 0.5s;
 }
 .card:hover {
-    transform: rotate(15deg) scale(1.25);
+    transform: scale(1.25);
   }
 i {
   padding-right: 20px;
