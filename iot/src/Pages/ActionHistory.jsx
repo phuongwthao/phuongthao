@@ -31,6 +31,10 @@ function ActionHistory() {
   // Gọi API khi trang hoặc số dòng hiển thị thay đổi (không bao gồm searchTerm)
   useEffect(() => {
     fetchData(currentPage, rowsPerPage, searchTerm);
+    const intervalId = setInterval(fetchData, 5000);
+
+    // Cleanup interval khi component bị hủy
+    return () => clearInterval(intervalId);
   }, [currentPage, rowsPerPage, searchTerm]);
 
   // Hàm gọi API khi nhấn nút tìm kiếm

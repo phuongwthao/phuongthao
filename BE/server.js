@@ -29,7 +29,7 @@ app.use(bodyParser.json());
 
 // Cấu hình kết nối MQTT với broker của bạn
 const mqttOptions = {
-  host: "192.168.1.6", // Địa chỉ IP của broker
+  host: "192.168.1.10", // Địa chỉ IP của broker
   port: 1886, // Port broker
   username: "thao", // Tài khoản MQTT
   password: "b21dccn684", // Mật khẩu MQTT
@@ -50,9 +50,33 @@ mqttClient.on("connect", () => {
       console.log("Đã đăng ký nhận dữ liệu từ topic home/sensor-data");
     }
   });
+
+  mqttClient.subscribe("LED",(err)=>{
+    if (err) {
+      console.error("Lỗi khi đăng ký nhận dữ liệu từ  topic LED");
+    } else {
+      console.log("Đã đăng ký nhận dữ liệu từ topic LED");
+    }
+  })
+
+  mqttClient.subscribe("FAN",(err)=>{
+    if (err) {
+      console.error("Lỗi khi đăng ký nhận dữ liệu từ  topic FAN");
+    } else {
+      console.log("Đã đăng ký nhận dữ liệu từ topic FAN");
+    }
+  })
+  mqttClient.subscribe("CONDITIONER",(err)=>{
+    if (err) {
+      console.error("Lỗi khi đăng ký nhận dữ liệu từ  topic CONDITIONER");
+    } else {
+      console.log("Đã đăng ký nhận dữ liệu từ topic CONDITIONER");
+    }
+  })
+
 });
 
-// Lắng nghe khi có dữ liệu gửi từ MQTT broker (từ topic 'home/sensor-data')
+//Lắng nghe khi có dữ liệu gửi từ MQTT broker (từ topic 'home/sensor-data')
 mqttClient.on("message", (topic, message) => {
   if (topic === "sensor/data") {
     // Chuyển message từ buffer thành JSON
@@ -74,25 +98,67 @@ mqttClient.on("message", (topic, message) => {
 });
 
 // API để điều khiển bật/tắt thiết bị (LED)
+// app.post("/api/control-device", (req, res) => {
+//   const { device, action } = req.body;
+//   const message = `${device}_${action}`; // Ví dụ: "LED1_ON" hoặc "LED2_OFF"
+//   mqttClient.publish("home/leds", message, (err) => {
+//     if (err) {
+//       return res.status(500).send("Lỗi khi gửi lệnh điều khiển");
+//     }
+//     mqttClient.on("message", (topic, message) => {
+//       if (topic === device) {
+//         const status = message.toString();
+//         if (status == action) {
+//           res.status(200).send(`success`);
+//           // Lưu lịch sử hành động vào MySQL
+//           const query =
+//             "INSERT INTO action_history (device, action,time) VALUES (?, ?, NOW())";
+//           db.query(query, [device, action], (err) => {
+//             if (err) {
+//               console.error("Lỗi khi lưu lịch sử hành động: ", err);
+//             }
+//           });
+//         }
+//       }
+//     });
+//   });
+// });
 app.post("/api/control-device", (req, res) => {
   const { device, action } = req.body;
-  const message = `${device}_${action}`; // Ví dụ: "LED1_ON" hoặc "LED2_OFF"
-  // Lấy giờ hiện tại và chuyển đổi sang múi giờ Việt Nam
+  const message = `${device}_${action}`; // Ví dụ: "LED_ON" hoặc "LED_OFF"
 
   mqttClient.publish("home/leds", message, (err) => {
     if (err) {
       return res.status(500).send("Lỗi khi gửi lệnh điều khiển");
     }
-    res.status(200).send(`Đã gửi lệnh ${message}`);
 
-    // Lưu lịch sử hành động vào MySQL
-    const query =
-      "INSERT INTO action_history (device, action,time) VALUES (?, ?, NOW())";
-    db.query(query, [device, action], (err) => {
-      if (err) {
-        console.error("Lỗi khi lưu lịch sử hành động: ", err);
+    // Tạo một listener tạm thời để lắng nghe phản hồi từ MQTT
+    const mqttListener = (topic, mqttMessage) => {
+      if (topic === device) {
+        // chỉ lắng nghe topic của thiết bị cụ thể
+        const status = mqttMessage.toString(); // Lấy trạng thái ("ON", "OFF")
+        console.log(status)
+        if (status === action) {
+          // So sánh với hành động yêu cầu
+          res.status(200).send(`Thành công: ${device} đã ${status}`);
+
+          // Xóa listener sau khi đã nhận được phản hồi
+          mqttClient.removeListener("message", mqttListener);
+
+          // Lưu lịch sử hành động vào MySQL
+          const query =
+            "INSERT INTO action_history (device, action, time) VALUES (?, ?, NOW())";
+          db.query(query, [device, action], (err) => {
+            if (err) {
+              console.error("Lỗi khi lưu lịch sử hành động: ", err);
+            }
+          });
+        }
       }
-    });
+    };
+
+    // Lắng nghe thông báo từ MQTT cho thiết bị
+    mqttClient.on("message", mqttListener);
   });
 });
 
@@ -112,8 +178,7 @@ app.get("/api/get-all-sensor-data", (req, res) => {
   const offset = (page - 1) * pagesize; // Tính toán vị trí bắt đầu lấy dữ liệu
 
   // Tạo truy vấn SQL
-  let query =
-    `SELECT id, temperature,humidity, light_level, DATE_FORMAT(time, '%Y-%m-%d %H:%i:%s') AS time FROM datasensor`;
+  let query = `SELECT id, temperature,humidity, light_level, DATE_FORMAT(time, '%Y-%m-%d %H:%i:%s') AS time FROM datasensor`;
   let countQuery = "SELECT COUNT(*) as totalRecords FROM datasensor";
   let conditions = [];
 

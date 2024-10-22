@@ -24,6 +24,10 @@ function DataSensor() {
 
   useEffect(() => {
     fetchData(); // Gọi hàm lấy dữ liệu khi component được mount
+    const intervalId = setInterval(fetchData, 5000);
+
+    // Cleanup interval khi component bị hủy
+    return () => clearInterval(intervalId);
   }, [currentPage, rowsPerPage, searchTerm, searchField]);
 
   const handlePageChange = (pageNumber) => {

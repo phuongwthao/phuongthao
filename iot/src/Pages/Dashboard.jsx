@@ -78,10 +78,12 @@ function Dashboard() {
       if (sensorData.length === 0) return;
 
       // Lấy ra thời gian và các dữ liệu cảm biến từ API
-      const labels = sensorData.map((item) => item.time);
-      const temperatureData = sensorData.map((item) => item.temperature);
-      const humidityData = sensorData.map((item) => item.humidity);
-      const lightData = sensorData.map((item) => item.light_level);
+      const labels = sensorData.map((item) => item.time).reverse();
+      const temperatureData = sensorData
+        .map((item) => item.temperature)
+        .reverse();
+      const humidityData = sensorData.map((item) => item.humidity).reverse();
+      const lightData = sensorData.map((item) => item.light_level).reverse();
 
       const data = {
         labels: labels,
@@ -128,7 +130,7 @@ function Dashboard() {
     fetchAndRenderData();
 
     // Cập nhật dữ liệu mỗi 5 giây
-    const intervalId = setInterval(fetchAndRenderData, 5000);
+    const intervalId = setInterval(fetchAndRenderData, 10000);
 
     // Cleanup khi component bị hủy
     return () => {
@@ -153,7 +155,7 @@ function Dashboard() {
       },
       body: JSON.stringify(payload), // Chuyển đổi payload thành chuỗi JSON
     });
-    if (response.ok) {
+    if (response.status === 200) {
       // Nếu điều khiển thành công, cập nhật trạng thái
       setIsChecked1(newChecked);
     } else {
@@ -174,7 +176,7 @@ function Dashboard() {
       },
       body: JSON.stringify(payload), // Chuyển đổi payload thành chuỗi JSON
     });
-    if (response.ok) {
+    if (response.status === 200) {
       // Nếu điều khiển thành công, cập nhật trạng thái
       setIsChecked2(newChecked);
     } else {
@@ -196,7 +198,7 @@ function Dashboard() {
       },
       body: JSON.stringify(payload), // Chuyển đổi payload thành chuỗi JSON
     });
-    if (response.ok) {
+    if (response.status === 200) {
       // Nếu điều khiển thành công, cập nhật trạng thái
       setIsChecked3(newChecked);
     } else {
