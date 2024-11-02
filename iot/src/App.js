@@ -1,4 +1,3 @@
-
 // src/App.js
 import React from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
@@ -7,7 +6,8 @@ import Dashboard from "./Pages/Dashboard";
 import DataSensor from "./Pages/DataSensor";
 import ActionHistory from "./Pages/ActionHistory";
 import Profile from "./Pages/Profile";
-import './App.css'
+import NewPage from "./Pages/NewPage";
+import "./App.css";
 
 function App() {
   return (
@@ -23,6 +23,7 @@ function App() {
               <Route path="/datasensor" element={<DataSensor />} />
               <Route path="/actionhistory" element={<ActionHistory />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/newpage" element={<NewPage />} />
             </Routes>
           </div>
         </div>

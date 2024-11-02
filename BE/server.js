@@ -29,7 +29,7 @@ app.use(bodyParser.json());
 
 // Cấu hình kết nối MQTT với broker của bạn
 const mqttOptions = {
-  host: "192.168.1.10", // Địa chỉ IP của broker
+  host: "192.168.117.62", // Địa chỉ IP của broker
   port: 1886, // Port broker
   username: "thao", // Tài khoản MQTT
   password: "b21dccn684", // Mật khẩu MQTT
@@ -42,7 +42,7 @@ const mqttClient = mqtt.connect(mqttOptions); // Thay localhost bằng địa ch
 mqttClient.on("connect", () => {
   console.log("Đã kết nối đến MQTT broker");
 
-  // Subscribe vào topic mà cảm biến gửi dữ liệu (ví dụ: 'home/sensor-data')
+  //Subscribe vào topic mà cảm biến gửi dữ liệu (ví dụ: 'home/sensor-data')
   mqttClient.subscribe("sensor/data", (err) => {
     if (err) {
       console.error("Lỗi khi đăng ký nhận dữ liệu từ  topic home/sensor-data");
@@ -51,28 +51,35 @@ mqttClient.on("connect", () => {
     }
   });
 
-  mqttClient.subscribe("LED",(err)=>{
+  mqttClient.subscribe("LED", (err) => {
     if (err) {
       console.error("Lỗi khi đăng ký nhận dữ liệu từ  topic LED");
     } else {
       console.log("Đã đăng ký nhận dữ liệu từ topic LED");
     }
-  })
+  });
 
-  mqttClient.subscribe("FAN",(err)=>{
+  mqttClient.subscribe("FAN", (err) => { 
     if (err) {
       console.error("Lỗi khi đăng ký nhận dữ liệu từ  topic FAN");
     } else {
       console.log("Đã đăng ký nhận dữ liệu từ topic FAN");
     }
-  })
-  mqttClient.subscribe("CONDITIONER",(err)=>{
+  });
+  mqttClient.subscribe("CONDITIONER", (err) => {
     if (err) {
       console.error("Lỗi khi đăng ký nhận dữ liệu từ  topic CONDITIONER");
     } else {
       console.log("Đã đăng ký nhận dữ liệu từ topic CONDITIONER");
     }
-  })
+  });
+  mqttClient.subscribe("WARNING", (err) => {
+    if (err) {
+      console.error("Lỗi khi đăng ký nhận dữ liệu từ  topic WARNING");
+    } else {
+      console.log("Đã đăng ký nhận dữ liệu từ topic WARNING");
+    }
+  });
 
 });
 
@@ -83,17 +90,21 @@ mqttClient.on("message", (topic, message) => {
     const sensorData = JSON.parse(message.toString());
 
     // Lưu dữ liệu vào cơ sở dữ liệu MySQL
-    const { temperature, humidity, lightLevel } = sensorData;
+    const { temperature, humidity, lightLevel, randomSensor } = sensorData;
     const query =
-      "INSERT INTO datasensor (temperature, humidity, light_level, time) VALUES (?, ?, ?, NOW())";
+      "INSERT INTO datasensor (temperature, humidity, light_level, time, randomSensor) VALUES (?, ?, ?, NOW(),?)";
 
-    db.query(query, [temperature, humidity, lightLevel], (err) => {
-      if (err) {
-        console.error("Lỗi khi lưu dữ liệu cảm biến: ", err);
-      } else {
-        console.log("Dữ liệu cảm biến đã được lưu vào cơ sở dữ liệu");
+    db.query(
+      query,
+      [temperature, humidity, lightLevel, randomSensor],
+      (err) => {
+        if (err) {
+          console.error("Lỗi khi lưu dữ liệu cảm biến: ", err);
+        } else {
+          console.log("Dữ liệu cảm biến đã được lưu vào cơ sở dữ liệu");
+        }
       }
-    });
+    );
   }
 });
 
@@ -137,7 +148,7 @@ app.post("/api/control-device", (req, res) => {
       if (topic === device) {
         // chỉ lắng nghe topic của thiết bị cụ thể
         const status = mqttMessage.toString(); // Lấy trạng thái ("ON", "OFF")
-        console.log(status)
+        console.log(status);
         if (status === action) {
           // So sánh với hành động yêu cầu
           res.status(200).send(`Thành công: ${device} đã ${status}`);
@@ -178,7 +189,7 @@ app.get("/api/get-all-sensor-data", (req, res) => {
   const offset = (page - 1) * pagesize; // Tính toán vị trí bắt đầu lấy dữ liệu
 
   // Tạo truy vấn SQL
-  let query = `SELECT id, temperature,humidity, light_level, DATE_FORMAT(time, '%Y-%m-%d %H:%i:%s') AS time FROM datasensor`;
+  let query = `SELECT id, temperature,humidity, light_level, randomSensor,DATE_FORMAT(time, '%Y-%m-%d %H:%i:%s') AS time FROM datasensor`;
   let countQuery = "SELECT COUNT(*) as totalRecords FROM datasensor";
   let conditions = [];
 
@@ -280,6 +291,18 @@ app.get("/api/get-latest-sensor-data", (req, res) => {
     }
   });
 });
+
+//
+app.get("/api/count", async(req,res)=>{
+  let countQuery = 'SELECT COUNT(*) AS count FROM datasensor WHERE randomSensor > 70 AND DATE(time) = CURDATE()';
+  db.query(countQuery, (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: "Có lỗi xảy ra khi truy vấn dữ liệu" });
+    }
+    const count = results[0].count;
+    res.json({ count });
+  });
+})
 
 // ACTION history
 app.get("/api/get-action-history", async (req, res) => {

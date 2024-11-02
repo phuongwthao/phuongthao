@@ -84,6 +84,7 @@ function Dashboard() {
         .reverse();
       const humidityData = sensorData.map((item) => item.humidity).reverse();
       const lightData = sensorData.map((item) => item.light_level).reverse();
+      const randomData = sensorData.map((item) => item.randomSensor).reverse();
 
       const data = {
         labels: labels,
@@ -107,6 +108,13 @@ function Dashboard() {
             backgroundColor: "yellow",
             borderColor: "yellow",
             data: lightData,
+            tension: 0.4,
+          },
+          {
+            label: "Random",
+            backgroundColor: "green",
+            borderColor: "green",
+            data: randomData,
             tension: 0.4,
           },
         ],

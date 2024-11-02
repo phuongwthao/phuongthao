@@ -161,6 +161,7 @@ function DataSensor() {
             <th>Humidity (%)</th>
             <th>Light (%)</th>
             <th>Time</th>
+            <th>RandomSensor</th>
           </tr>
         </thead>
         <tbody>
@@ -172,6 +173,7 @@ function DataSensor() {
                 <td>{row.humidity}</td>
                 <td>{row.light_level}</td>
                 <td>{row.time}</td>
+                <td>{row.randomSensor}</td>
               </tr>
             ))
           ) : (

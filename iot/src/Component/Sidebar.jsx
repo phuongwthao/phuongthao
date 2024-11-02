@@ -50,6 +50,16 @@ const Sidebar = () => {
             Profile
           </NavLink>
         </li>
+        <li>
+          <NavLink
+            to="/newpage"
+            className={({ isActive }) =>
+              isActive ? "nav-link active" : "nav-link"
+            }
+          >
+            New Page
+          </NavLink>
+        </li>
       </ul>
     </div>
   );
